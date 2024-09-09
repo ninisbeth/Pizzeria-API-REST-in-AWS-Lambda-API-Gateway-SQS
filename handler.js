@@ -1,6 +1,43 @@
 const { v4: uuidv4 } = require('uuid');
+const AWS = require('aws-sdk');
 
-exports.hacerPedidoPizza = async (event) => {
+const sqs = new AWS.SQS({ region: process.env.REGION });
+const QUEUE_URL = process.env.PENDING_ORDER_QUEUE;
+
+module.exports.hacerPedidoPizza = async (event) => {
+  console.log('HacerPedido fue llamada');
+  const orderId = uuidv4();
+
+  const params = {
+    MessageBody: JSON.stringify({ orderId: orderId }),
+    QueueUrl: QUEUE_URL
+  };
+
+  try {
+    const data = await sqs.sendMessage(params).promise();
+    console.log('Mensaje enviado a SQS con éxito', data);
+
+    const message = {
+      orderId: orderId,
+      messageId: data.MessageId
+    };
+
+    return sendResponse(200, message);
+  } catch (err) {
+    console.error('Error al enviar mensaje a SQS:', err);
+    return sendResponse(500, { error: 'Error al enviar el mensaje a la cola.' });
+  }
+};
+
+function sendResponse(statusCode, message) {
+  return {
+    statusCode: statusCode,
+    body: JSON.stringify(message)
+  };
+}
+
+/*
+module.exports.hacerPedidoPizza = async (event) => {
   console.log("Evento recibido:", JSON.stringify(event, null, 2)); // Imprime el evento completo
   const httpMethod = event.httpMethod; // Detecta el método HTTP (POST, GET, PUT)
   const pathParameters = event.pathParameters || {};  // Obtiene los parámetros de la ruta, si existen
@@ -52,4 +89,4 @@ exports.hacerPedidoPizza = async (event) => {
       message: 'Método HTTP no soportado o parámetros incorrectos',
     }),
   };
-};
+};*/
