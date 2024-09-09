@@ -1,0 +1,32 @@
+service: PedirPizzasProyecto
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  region: sa-east-1
+  environment:
+    REGION: ${self:provider.region}
+    PENDING_ORDER_QUEUE: 
+      Ref: PendingOrdersQueue 
+
+functions:
+  hacerPedido:
+    handler: handler.hacerPedidoPizza
+    events:
+      - http:
+          method: post
+          path: pedido
+      - http:
+          method: get
+          path: pedido/{id}
+      - http:
+          method: put
+          path: pedido/{id}
+
+resources:
+  Resources:
+    PendingOrdersQueue:
+      Type: "AWS::SQS::Queue"
+      Properties:
+        QueueName: "PendingOrdersQueue"
+        
