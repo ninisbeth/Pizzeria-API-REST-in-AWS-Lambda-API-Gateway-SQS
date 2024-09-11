@@ -7,13 +7,18 @@ provider:
   environment:
     REGION: ${self:provider.region}
     PENDING_ORDER_QUEUE: 
-      Ref: PendingOrdersQueue 
+      Ref: PendingOrdersQueue
+    PENDING_ORDER_QUEUE_NAME: PendingOrdersQueue  
+    PENDING_ORDER_QUEUE_URL: http://localhost:4566/queue/PendingOrdersQueue
+
   iamRoleStatements:
     - Effect: "Allow"
       Action:
         - "sqs:SendMessage"
-      Resource: "arn:aws:sqs:${self:provider.region}:*:PendingOrdersQueue"
-
+      Resource: 
+        Fn::GetAtt:
+        - PendingOrdersQueue
+        - Arn
 functions:
   hacerPedido:
     handler: handler.hacerPedidoPizza
@@ -21,11 +26,24 @@ functions:
       - http:
           method: post
           path: pedido
+  prepararPedido: #Lambda que se va a activar cuando hay 
+                  #nuevo mensaje en la cola SQS
+    handler: handler.prepararPedidoPizza
+    events: 
+      - sqs:
+          arn: #amazon resources name
+            Fn::GetAtt:
+              - PendingOrdersQueue #mismo recurso creado abajo 
+              - Arn
+          batchSize: 1 #cantidad de mensajes que esperamos 
+                       #para disparar esta lambda
+                       #En nuestro caso queremos preparar los pedidos 
+                       #a medida que van llegando los mensajes uno por uno
 
 resources:
   Resources:
     PendingOrdersQueue:
       Type: "AWS::SQS::Queue"
       Properties:
-        QueueName: "PendingOrdersQueue"
+        QueueName: ${self:provider.environment.PENDING_ORDER_QUEUE_NAME}
         

@@ -1,15 +1,30 @@
 const { v4: uuidv4 } = require('uuid');
 const AWS = require('aws-sdk');
 
+// Configuración para apuntar a la instancia local de SQS
+/*
+const sqs = new AWS.SQS({
+  region: 'sa-east-1', // Puedes usar cualquier región
+  endpoint: 'http://localhost:4566' // La URL de LocalStack para SQS
+});*/
+
 const sqs = new AWS.SQS({ region: process.env.REGION });
 const QUEUE_URL = process.env.PENDING_ORDER_QUEUE;
+//const QUEUE_URL = process.env.PENDING_ORDER_QUEUE_URL;
 
 module.exports.hacerPedidoPizza = async (event) => {
   console.log('HacerPedido fue llamada');
   const orderId = uuidv4();
+  // Parseamos el cuerpo de la solicitud
+  const body = JSON.parse(event.body);
 
   const params = {
-    MessageBody: JSON.stringify({ orderId: orderId }),
+    MessageBody: JSON.stringify({
+      orderId: orderId,
+      name: body.name,
+      address: body.address,
+      pizzas: body.pizzas
+    }),
     QueueUrl: QUEUE_URL
   };
 
@@ -19,7 +34,10 @@ module.exports.hacerPedidoPizza = async (event) => {
 
     const message = {
       orderId: orderId,
-      messageId: data.MessageId
+      messageId: data.MessageId,
+      name: body.name,
+      address: body.address,
+      pizzas: body.pizzas 
     };
 
     return sendResponse(200, message);
@@ -28,6 +46,11 @@ module.exports.hacerPedidoPizza = async (event) => {
     return sendResponse(500, { error: 'Error al enviar el mensaje a la cola.' });
   }
 };
+
+module.exports.prepararPedidoPizza = async (event) => {
+  console.log('prepararPedidoPizza fue llamada');
+  console.log(event);
+}
 
 function sendResponse(statusCode, message) {
   return {
